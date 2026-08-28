@@ -14,13 +14,12 @@ The same project is distributed in two forms:
 This is the recommended option for Codex users.
 
 ```bash
-codex plugin marketplace add OWNER/REPOSITORY
+codex plugin marketplace add hamaney/THEKRA
 codex plugin add thekra@thekra
 ```
 
-Replace `OWNER/REPOSITORY` with this repository's GitHub path—for example,
-`your-name/thekra`. Start a new Codex task after installation so the
-`thekra:ayah-reminder` skill is loaded.
+Start a new Codex task after installation so the `thekra:ayah-reminder` skill
+is loaded.
 
 ## Install as a portable skill
 
