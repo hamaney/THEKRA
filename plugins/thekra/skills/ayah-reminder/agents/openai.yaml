@@ -1,0 +1,4 @@
+interface:
+  display_name: "Ayah Reminder"
+  short_description: "Show a brief Quran reminder in your preferred language"
+  default_prompt: "Use $ayah-reminder to show me a random ayah reminder."

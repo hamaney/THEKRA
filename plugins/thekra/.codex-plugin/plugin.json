@@ -1,0 +1,18 @@
+{
+  "name": "thekra",
+  "version": "0.1.0",
+  "description": "Shows curated Quran ayah reminders in Arabic, English, or both.",
+  "author": {
+    "name": "Thekra Contributors"
+  },
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Thekra",
+    "shortDescription": "Remember Allah with a brief Quran ayah.",
+    "longDescription": "Show a curated Quran ayah on request, during long waits, or at configured points in a conversation, in Arabic, English, or both.",
+    "developerName": "Thekra Contributors",
+    "category": "Productivity",
+    "capabilities": [],
+    "defaultPrompt": "Show me a random ayah in Arabic and English."
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "thekra",
+  "interface": {
+    "displayName": "Thekra"
+  },
+  "plugins": [
+    {
+      "name": "thekra",
+      "source": {
+        "source": "local",
+        "path": "./plugins/thekra"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}
