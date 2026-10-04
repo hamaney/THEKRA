@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { AutoScroll, Language, Line, Ref, Verse } from '../types'
+import type { AutoScroll, Language, Line, Ref, Surah, Verse } from '../types'
 
 // Any of the Quran's 6236 ayat, by its number across the whole mushaf. The
 // text is always fetched, never written here, so no ayah is ever misquoted.
@@ -11,6 +11,7 @@ const AYAH_API = 'https://api.alquran.cloud/v1/ayah/{n}/{edition}'
 // A whole surah per request, so reading on costs one call per surah, far
 // under the source's limit of 12 requests a second.
 const SURAH_API = 'https://api.alquran.cloud/v1/surah/{n}/{edition}'
+const SURAH_LIST_API = 'https://api.alquran.cloud/v1/surah'
 // Arabic is the Uthmani text; the translation is Saheeh International.
 const EDITIONS: Record<Language, string> = { ar: 'quran-uthmani', en: 'en.sahih' }
 
@@ -31,6 +32,7 @@ const cols = atom({ plugin: 'thekra', key: 'cols' } as const, 0)
 const language = atom({ plugin: 'thekra', key: 'language' } as const, 'ar')
 const speed = atom({ plugin: 'thekra', key: 'speed' } as const, 20_000)
 const auto = atom({ plugin: 'thekra', key: 'auto' } as const, 'work')
+const surahs = atom({ plugin: 'thekra', key: 'surahs' } as const, [])
 
 // The page's text width, as last drawn: the border and its padding take four cells.
 let columns = 76
@@ -111,11 +113,35 @@ export const append = (page: readonly Line[], verse: Verse, cols: number): Line[
 export const reference = (shown: readonly Line[], lang: Language = 'ar'): string => {
   const refs = shown.flatMap(l => l.refs)
   const last = refs[refs.length - 1]
-  const same = refs.filter(r => r.name === last.name)
-  const from = same[0].numberInSurah
-  const range = from === last.numberInSurah ? `${from}` : `${from}-${last.numberInSurah}`
-  return `${lang === 'en' ? last.englishName : last.name} ${range}`
+  return `${lang === 'en' ? last.englishName : last.name} ${range(shown)}`
 }
+
+// The ayat of the newest surah on the page, as `from-to`.
+export const range = (shown: readonly Line[]): string => {
+  const refs = shown.flatMap(l => l.refs)
+  const last = refs[refs.length - 1]
+  const from = refs.filter(r => r.name === last.name)[0].numberInSurah
+  return from === last.numberInSurah ? `${from}` : `${from}-${last.numberInSurah}`
+}
+
+// The surah list answer, cleaned like every text from the network.
+export const parseSurahList = (body: string): Surah[] => {
+  const payload = JSON.parse(body) as { code?: number; data?: Surah[] }
+  if (payload.code !== 200 || !Array.isArray(payload.data)) return []
+  return payload.data.map(s => ({
+    number: s.number,
+    name: clean(s.name),
+    englishName: clean(s.englishName),
+    numberOfAyahs: s.numberOfAyahs,
+  }))
+}
+
+// A surah's first ayah by its number across the mushaf.
+export const firstAyahOf = (list: readonly Surah[], surah: number): number =>
+  1 + list.filter(s => s.number < surah).reduce((n, s) => n + s.numberOfAyahs, 0)
+
+export const surahOptions = (list: readonly Surah[], lang: Language) =>
+  list.map(s => ({ value: String(s.number), label: `${s.number} ${lang === 'en' ? s.englishName : s.name}` }))
 
 export const nextSpeed = (ms: number): number => SPEEDS[(SPEEDS.indexOf(ms) + 1) % SPEEDS.length]
 
@@ -192,6 +218,28 @@ async function rebuild($: EngineInterface, number: number): Promise<void> {
   await update($, lines, () => page)
   await update($, top, () => 0)
   await update($, cols, () => columns)
+}
+
+async function loadSurahs($: EngineInterface): Promise<void> {
+  try {
+    if ((await read($, surahs)).length > 0) return
+    const res = await $.http.fetch(SURAH_LIST_API)
+    const list = res.ok ? parseSurahList(res.text) : []
+    if (list.length === 114) await update($, surahs, () => list)
+  } catch {
+    // Offline: the picker waits for the next session.
+  }
+}
+
+// Jumps the page to the start of a surah picked in the list.
+async function pick($: EngineInterface, value: string): Promise<void> {
+  try {
+    const list = await read($, surahs)
+    if (list.length === 0) return
+    await rebuild($, firstAyahOf(list, Number(value)))
+  } catch {
+    // Offline: keep what is shown.
+  }
 }
 
 async function start($: EngineInterface): Promise<void> {
@@ -271,6 +319,7 @@ export const register: Register = (on, options) => {
   // One ticker for the session; each second `tick` decides whether to step.
   on('session.start', async ($, e, next) => {
     if ((await read($, lines)).length === 0) $.clock.after(0, () => start($))
+    $.clock.after(0, () => loadSurahs($))
     ticker ??= $.clock.every(1000, () => tick($))
 
     return next(e)
@@ -305,7 +354,10 @@ export const register: Register = (on, options) => {
     if (shown.length === 0) {
       return below
     }
-    const { Box, Button, Text } = $.ui.resolve(e)
+    const list = await read($, surahs)
+    const here = shown[shown.length - 1].refs.at(-1)
+    const current = list.find(s => s.name === here?.name)
+    const { Box, Button, Select, Text } = $.ui.resolve(e)
 
     // The oldest line fades and the newest line holding text is bold and
     // brighter: a terminal's Arabic font often has no bold face, and the
@@ -350,7 +402,18 @@ export const register: Register = (on, options) => {
           <Button key="auto" label={AUTO_LABELS[mode]} hotkey="a" onPress={() => cycleAuto($)} />
           <Text> </Text>
           <Button key="lang" label={lang === 'ar' ? 'English' : 'العربية'} hotkey="t" onPress={() => toggle($)} />
-          <Text dimColor>  {reference(shown, lang)}</Text>
+          <Text>  </Text>
+          {current ? (
+            <Select
+              key="surah"
+              options={surahOptions(list, lang)}
+              value={String(current.number)}
+              onSelect={value => pick($, value)}
+            />
+          ) : (
+            <Text dimColor>{reference(shown, lang)}</Text>
+          )}
+          {current ? <Text dimColor> {range(shown)}</Text> : null}
         </Box>
       </Box>
     )

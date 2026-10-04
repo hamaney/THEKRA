@@ -1,6 +1,6 @@
 {
   "name": "thekra",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Quran ayat above the Claude Code prompt as a scrolling page, and an ayah-reminder skill.",
   "author": { "name": "Thekra Contributors" },
   "types": "./types/index.d.ts",

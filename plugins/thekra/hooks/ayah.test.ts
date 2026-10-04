@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { alignment, append, nextAuto, nextSpeed, parseSurah, parseVerse, reference, scrolls, surahNear, words } from './index'
+import { alignment, append, firstAyahOf, nextAuto, parseSurahList, range, surahOptions, nextSpeed, parseSurah, parseVerse, reference, scrolls, surahNear, words } from './index'
 
 const verse = (text: string, numberInSurah: number) => ({
   number: numberInSurah,
@@ -115,4 +115,36 @@ test('control characters from the source never reach the terminal', () => {
     }),
   )
   expect(surah.map(v => [v.text, v.surah.name, v.surah.englishName])).toEqual([['أ[1A', 'س', 'S']])
+})
+
+const SURAHS = [
+  { number: 1, name: 'سُورَةُ الفَاتِحَةِ', englishName: 'Al-Faatiha', numberOfAyahs: 7 },
+  { number: 2, name: 'سُورَةُ البَقَرَةِ', englishName: 'Al-Baqara', numberOfAyahs: 286 },
+  { number: 3, name: 'سُورَةُ آلِ عِمۡرَانَ', englishName: 'Aal-i-Imraan', numberOfAyahs: 200 },
+]
+
+test('the surah list answer gives every surah, cleaned; a short one none', () => {
+  const data = [...SURAHS, { number: 4, name: 'س\u001b', englishName: 'N', numberOfAyahs: 176 }]
+  expect(parseSurahList(JSON.stringify({ code: 200, data })).map(s => s.name)).toEqual([
+    ...SURAHS.map(s => s.name),
+    'س',
+  ])
+  expect(parseSurahList(JSON.stringify({ code: 500, data: [] }))).toEqual([])
+})
+
+test('picking a surah starts at its first ayah, counted across the mushaf', () => {
+  expect(firstAyahOf(SURAHS, 1)).toBe(1)
+  expect(firstAyahOf(SURAHS, 2)).toBe(8)
+  expect(firstAyahOf(SURAHS, 3)).toBe(294)
+})
+
+test('the surah picker lists every surah in the page language', () => {
+  expect(surahOptions(SURAHS, 'ar')[1]).toEqual({ value: '2', label: '2 سُورَةُ البَقَرَةِ' })
+  expect(surahOptions(SURAHS, 'en')[2]).toEqual({ value: '3', label: '3 Aal-i-Imraan' })
+})
+
+test('the range names the ayat on the page in the newest surah', () => {
+  const page = append(append([], verse('أ', 2), 40), verse('ب', 3), 40)
+  expect(range(page)).toBe('2-3')
+  expect(range(page.slice(0, 1))).toBe('2-3')
 })

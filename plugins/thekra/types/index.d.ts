@@ -10,6 +10,9 @@ export type Ref = { number: number; numberInSurah: number; name: string; english
 
 export type Line = { text: string; refs: Ref[] }
 
+// One surah of the picker.
+export type Surah = { number: number; name: string; englishName: string; numberOfAyahs: number }
+
 export type Language = 'ar' | 'en'
 
 // When the band scrolls by itself: only while Claude works, always, or never.
@@ -28,6 +31,8 @@ declare module 'claude-code' {
       // Milliseconds between steps of one line when the band scrolls by itself.
       speed: number
       auto: AutoScroll
+      // The 114 surahs, for the picker; empty until fetched.
+      surahs: Surah[]
     }
   }
 }
