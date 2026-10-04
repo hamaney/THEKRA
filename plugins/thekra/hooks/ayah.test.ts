@@ -138,9 +138,23 @@ test('picking a surah starts at its first ayah, counted across the mushaf', () =
   expect(firstAyahOf(SURAHS, 3)).toBe(294)
 })
 
-test('the surah picker lists every surah in the page language', () => {
-  expect(surahOptions(SURAHS, 'ar')[1]).toEqual({ value: '2', label: '2 سُورَةُ البَقَرَةِ' })
-  expect(surahOptions(SURAHS, 'en')[2]).toEqual({ value: '3', label: '3 Aal-i-Imraan' })
+test('the surah picker lists the surahs in the page language', () => {
+  expect(surahOptions(SURAHS, 'ar', 2)[1]).toEqual({ value: '2', label: '2 سُورَةُ البَقَرَةِ' })
+  expect(surahOptions(SURAHS, 'en', 2)[2]).toEqual({ value: '3', label: '3 Aal-i-Imraan' })
+})
+
+test('the surah picker holds the current half and a jump to the other, never over 64', () => {
+  const all = Array.from({ length: 114 }, (_, i) => ({ number: i + 1, name: `س${i + 1}`, englishName: `S${i + 1}`, numberOfAyahs: 5 }))
+  const first = surahOptions(all, 'en', 2)
+  expect(first.length).toBeLessThanOrEqual(64)
+  expect(first[0].value).toBe('1')
+  expect(first[56].value).toBe('57')
+  expect(first[57].value).toBe('58')
+  const second = surahOptions(all, 'en', 100)
+  expect(second.length).toBeLessThanOrEqual(64)
+  expect(second[0].value).toBe('1')
+  expect(second[1].value).toBe('58')
+  expect(second[second.length - 1].value).toBe('114')
 })
 
 test('the range names the ayat on the page in the newest surah', () => {

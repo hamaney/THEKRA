@@ -147,8 +147,21 @@ export const parseSurahList = (body: string): Surah[] => {
 export const firstAyahOf = (list: readonly Surah[], surah: number): number =>
   1 + list.filter(s => s.number < surah).reduce((n, s) => n + s.numberOfAyahs, 0)
 
-export const surahOptions = (list: readonly Surah[], lang: Language) =>
-  list.map(s => ({ value: String(s.number), label: `${s.number} ${lang === 'en' ? s.englishName : s.name}` }))
+// A dropdown holds at most 64 entries, so the picker lists the half of the
+// Quran the page is in (57 surahs) and one entry that jumps to the other half.
+const HALF = 57
+
+export const surahOptions = (list: readonly Surah[], lang: Language, current: number) => {
+  const option = (s: Surah, prefix = '') => ({
+    value: String(s.number),
+    label: `${prefix}${s.number} ${lang === 'en' ? s.englishName : s.name}`,
+  })
+  const firstHalf = current <= HALF
+  const half = list.filter(s => (s.number <= HALF) === firstHalf).map(s => option(s))
+  const jump = list.find(s => s.number === (firstHalf ? HALF + 1 : 1))
+  if (jump === undefined) return half
+  return firstHalf ? [...half, option(jump, '... ')] : [option(jump, '... '), ...half]
+}
 
 export const nextSpeed = (ms: number): number => SPEEDS[(SPEEDS.indexOf(ms) + 1) % SPEEDS.length]
 
@@ -415,7 +428,7 @@ export const register: Register = (on, options) => {
           {current ? (
             <Select
               key="surah"
-              options={surahOptions(list, lang)}
+              options={surahOptions(list, lang, current.number)}
               value={String(current.number)}
               onSelect={value => pick($, value)}
             />
