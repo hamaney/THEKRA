@@ -38,12 +38,17 @@ let waited = 0
 let working = false
 const cache = new Map<string, Verse>()
 
+// Text from the network is drawn in a terminal: control characters (escape
+// sequences among them) are dropped so the source can never drive it.
+const clean = (text: string): string => String(text).replace(/\p{Cc}/gu, '')
+
 // Anything but a whole answer is no ayah: show nothing rather than a guess.
 export const parseVerse = (body: string): Verse | null => {
   const payload = JSON.parse(body) as { code?: number; data?: Verse }
   const a = payload.data
   if (payload.code !== 200 || !a?.text) return null
-  return a
+  const surah = { ...a.surah, name: clean(a.surah.name), englishName: clean(a.surah.englishName) }
+  return { number: a.number, text: clean(a.text), numberInSurah: a.numberInSurah, surah }
 }
 
 // Diacritics and other combining marks take no cell of their own.
@@ -133,8 +138,8 @@ export const parseSurah = (body: string): Verse[] => {
   const payload = JSON.parse(body) as SurahAnswer
   const s = payload.data
   if (payload.code !== 200 || !s?.ayahs || s.ayahs.length !== s.numberOfAyahs) return []
-  const surah = { number: s.number, name: s.name, englishName: s.englishName, numberOfAyahs: s.numberOfAyahs }
-  return s.ayahs.map(a => ({ number: a.number, text: a.text, numberInSurah: a.numberInSurah, surah }))
+  const surah = { number: s.number, name: clean(s.name), englishName: clean(s.englishName), numberOfAyahs: s.numberOfAyahs }
+  return s.ayahs.map(a => ({ number: a.number, text: clean(a.text), numberInSurah: a.numberInSurah, surah }))
 }
 
 // Which surah holds ayah `n`, from a neighbour already fetched.

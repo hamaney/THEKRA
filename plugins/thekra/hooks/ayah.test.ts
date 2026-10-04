@@ -102,3 +102,17 @@ test('the surah of an ayah comes from the ayah before or after it', () => {
 test('an ayah number is glued to its last word', () => {
   expect(words(verse('صِرَٰطٌ مُسْتَقِيمٌ', 41))).toEqual(['صِرَٰطٌ', 'مُسْتَقِيمٌ\u00a0(41)'])
 })
+
+test('control characters from the source never reach the terminal', () => {
+  const evil = { ...verse('نَصّ\u001b]0;pwned\u0007\u001b[2J', 2), surah: { ...verse('', 2).surah, name: 'سورة\u001b[31m' } }
+  const parsed = parseVerse(JSON.stringify({ code: 200, data: evil }))
+  expect(parsed?.text).toBe('نَصّ]0;pwned[2J')
+  expect(parsed?.surah.name).toBe('سورة[31m')
+  const surah = parseSurah(
+    JSON.stringify({
+      code: 200,
+      data: { number: 1, name: 'س\u009b', englishName: 'S\u001b', numberOfAyahs: 1, ayahs: [{ number: 1, text: 'أ\u001b[1A', numberInSurah: 1 }] },
+    }),
+  )
+  expect(surah.map(v => [v.text, v.surah.name, v.surah.englishName])).toEqual([['أ[1A', 'س', 'S']])
+})
