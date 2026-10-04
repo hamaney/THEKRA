@@ -1,0 +1,14 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "thekra",
+  "description": "Quran ayah reminders for Claude Code.",
+  "owner": { "name": "hamaney", "url": "https://github.com/hamaney" },
+  "plugins": [
+    {
+      "name": "thekra",
+      "description": "Quran ayat above the prompt as a scrolling page, and an ayah-reminder skill.",
+      "source": "./plugins/thekra",
+      "category": "productivity"
+    }
+  ]
+}

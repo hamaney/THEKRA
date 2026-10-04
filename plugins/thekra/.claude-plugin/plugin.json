@@ -1,0 +1,16 @@
+{
+  "name": "thekra",
+  "version": "0.2.0",
+  "description": "Quran ayat above the Claude Code prompt as a scrolling page, and an ayah-reminder skill.",
+  "author": { "name": "Thekra Contributors" },
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "align": {
+      "type": "string",
+      "title": "Ayat alignment",
+      "description": "Which side the ayat line up on",
+      "default": "right",
+      "options": ["right", "center", "left"]
+    }
+  }
+}
