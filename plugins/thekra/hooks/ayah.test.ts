@@ -148,3 +148,19 @@ test('the range names the ayat on the page in the newest surah', () => {
   expect(range(page)).toBe('2-3')
   expect(range(page.slice(0, 1))).toBe('2-3')
 })
+
+test('numbers from the source must be whole numbers, and direction overrides are dropped', () => {
+  const sneaky = { ...verse('نَصّ‮أ⁦ب⁩', 2), numberInSurah: '2\u001b[2J' }
+  expect(parseVerse(JSON.stringify({ code: 200, data: sneaky }))).toBeNull()
+  expect(parseVerse(JSON.stringify({ code: 200, data: verse('نَصّ‮أ⁦ب⁩', 2) }))?.text).toBe('نَصّأب')
+  const list = [{ number: '1\u001b', name: 'س', englishName: 'S', numberOfAyahs: 7 }]
+  expect(parseSurahList(JSON.stringify({ code: 200, data: list }))).toEqual([])
+  const surah = {
+    number: 1,
+    name: 'س',
+    englishName: 'S',
+    numberOfAyahs: 1,
+    ayahs: [{ number: 1, text: 'أ', numberInSurah: 'x' }],
+  }
+  expect(parseSurah(JSON.stringify({ code: 200, data: surah }))).toEqual([])
+})

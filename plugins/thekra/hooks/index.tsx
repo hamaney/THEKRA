@@ -41,15 +41,21 @@ let working = false
 const cache = new Map<string, Verse>()
 
 // Text from the network is drawn in a terminal: control characters (escape
-// sequences among them) are dropped so the source can never drive it.
-const clean = (text: string): string => String(text).replace(/\p{Cc}/gu, '')
+// sequences among them) and direction overrides and isolates, which could
+// reorder what is shown, are dropped so the source can never drive it.
+const clean = (text: unknown): string => String(text).replace(/[\p{Cc}\u202a-\u202e\u2066-\u2069]/gu, '')
+
+// Numbers from the network must be whole numbers in range, or the answer is refused.
+const whole = (n: unknown): n is number => Number.isInteger(n) && (n as number) > 0 && (n as number) <= 6236
 
 // Anything but a whole answer is no ayah: show nothing rather than a guess.
 export const parseVerse = (body: string): Verse | null => {
   const payload = JSON.parse(body) as { code?: number; data?: Verse }
   const a = payload.data
   if (payload.code !== 200 || !a?.text) return null
-  const surah = { ...a.surah, name: clean(a.surah.name), englishName: clean(a.surah.englishName) }
+  const s = a.surah
+  if (![a.number, a.numberInSurah, s?.number, s?.numberOfAyahs].every(whole)) return null
+  const surah = { number: s.number, name: clean(s.name), englishName: clean(s.englishName), numberOfAyahs: s.numberOfAyahs }
   return { number: a.number, text: clean(a.text), numberInSurah: a.numberInSurah, surah }
 }
 
@@ -128,6 +134,7 @@ export const range = (shown: readonly Line[]): string => {
 export const parseSurahList = (body: string): Surah[] => {
   const payload = JSON.parse(body) as { code?: number; data?: Surah[] }
   if (payload.code !== 200 || !Array.isArray(payload.data)) return []
+  if (!payload.data.every(s => whole(s.number) && whole(s.numberOfAyahs))) return []
   return payload.data.map(s => ({
     number: s.number,
     name: clean(s.name),
@@ -164,6 +171,8 @@ export const parseSurah = (body: string): Verse[] => {
   const payload = JSON.parse(body) as SurahAnswer
   const s = payload.data
   if (payload.code !== 200 || !s?.ayahs || s.ayahs.length !== s.numberOfAyahs) return []
+  if (![s.number, s.numberOfAyahs].every(whole)) return []
+  if (!s.ayahs.every(a => whole(a.number) && whole(a.numberInSurah))) return []
   const surah = { number: s.number, name: clean(s.name), englishName: clean(s.englishName), numberOfAyahs: s.numberOfAyahs }
   return s.ayahs.map(a => ({ number: a.number, text: clean(a.text), numberInSurah: a.numberInSurah, surah }))
 }
