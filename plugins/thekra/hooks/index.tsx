@@ -24,7 +24,10 @@ const WINDOW = 4
 const KEEP_ABOVE = 12
 export const SPEEDS = [10_000, 20_000, 30_000]
 export const AUTOS: readonly AutoScroll[] = ['work', 'on', 'off']
-const AUTO_LABELS: Record<AutoScroll, string> = { work: 'autoscroll: working', on: 'autoscroll: on', off: 'autoscroll: off' }
+// Setting buttons show their current value; pressing moves to the next one.
+const AUTO_LABELS: Record<AutoScroll, string> = { work: 'while thinking', on: 'continuous', off: 'manual' }
+// Latin codes: Arabic on the button line would let the terminal flip it.
+const LANG_LABELS: Record<Language, string> = { ar: 'ARA', en: 'ENG' }
 
 const lines = atom({ plugin: 'thekra', key: 'lines' } as const, [])
 const top = atom({ plugin: 'thekra', key: 'top' } as const, 0)
@@ -242,6 +245,33 @@ async function rebuild($: EngineInterface, number: number): Promise<void> {
   await update($, cols, () => columns)
 }
 
+// The ayah picker lists the block of AYAH_BLOCK ayat holding the current one,
+// with an entry at each end jumping to the block before or after, within 64.
+const AYAH_BLOCK = 60
+
+export const ayahOptions = (count: number, current: number) => {
+  const block = Math.floor((Math.max(1, Math.min(current, count)) - 1) / AYAH_BLOCK)
+  const from = block * AYAH_BLOCK + 1
+  const to = Math.min(count, from + AYAH_BLOCK - 1)
+  const jump = (first: number) => ({
+    value: String(first),
+    label: `... ${first}-${Math.min(count, first + AYAH_BLOCK - 1)}`,
+  })
+  const ayat = Array.from({ length: to - from + 1 }, (_, i) => ({ value: String(from + i), label: String(from + i) }))
+  return [...(from > 1 ? [jump(from - AYAH_BLOCK)] : []), ...ayat, ...(to < count ? [jump(to + 1)] : [])]
+}
+
+// Jumps the page to an ayah picked in the current surah.
+async function pickAyah($: EngineInterface, surah: number, value: string): Promise<void> {
+  try {
+    const list = await read($, surahs)
+    if (list.length === 0) return
+    await rebuild($, firstAyahOf(list, surah) + Number(value) - 1)
+  } catch {
+    // Offline: keep what is shown.
+  }
+}
+
 async function loadSurahs($: EngineInterface): Promise<void> {
   try {
     if ((await read($, surahs)).length > 0) return
@@ -379,17 +409,19 @@ export const register: Register = (on, options) => {
     const list = await read($, surahs)
     const here = shown[shown.length - 1].refs.at(-1)
     const current = list.find(s => s.name === here?.name)
+    const ayahHere = shown.flatMap(l => l.refs).find(r => r.name === here?.name)?.numberInSurah ?? 1
     const { Box, Button, Select, Text } = $.ui.resolve(e)
 
     // The oldest line fades and the newest line holding text is bold and
     // brighter: a terminal's Arabic font often has no bold face, and the
     // colour shows on any font. A short page keeps its height.
     // Arabic reads right to left, so there "next" sits on the left. The
-    // buttons keep a Latin line of their own: a terminal lays an Arabic line
-    // out right to left, so a click on it can land on the wrong button.
+    // buttons keep a Latin line of their own and the pickers, which show
+    // Arabic names, another: a terminal lays an Arabic line out right to
+    // left, so a click on it can land on the wrong control.
     const rows = Array.from({ length: WINDOW }, (_, i) => shown[i]?.text ?? ' ')
-    const prev = <Button key="prev" label={lang === 'ar' ? 'prev >' : '< prev'} hotkey="p" onPress={() => step($, -1)} />
-    const nxt = <Button key="next" label={lang === 'ar' ? '< next' : 'next >'} hotkey="n" onPress={() => step($, 1)} />
+    const prev = <Button key="prev" label={lang === 'ar' ? '▶' : '◀'} hotkey="p" onPress={() => step($, -1)} />
+    const nxt = <Button key="next" label={lang === 'ar' ? '◀' : '▶'} hotkey="n" onPress={() => step($, 1)} />
 
     return (
       <Box flexDirection="column">
@@ -423,8 +455,9 @@ export const register: Register = (on, options) => {
           <Text> </Text>
           <Button key="auto" label={AUTO_LABELS[mode]} hotkey="a" onPress={() => cycleAuto($)} />
           <Text> </Text>
-          <Button key="lang" label={lang === 'ar' ? 'English' : 'العربية'} hotkey="t" onPress={() => toggle($)} />
-          <Text>  </Text>
+          <Button key="lang" label={LANG_LABELS[lang]} hotkey="t" onPress={() => toggle($)} />
+        </Box>
+        <Box flexDirection="row" justifyContent={lang === 'en' ? 'flex-start' : alignItems}>
           {current ? (
             <Select
               key="surah"
@@ -435,6 +468,15 @@ export const register: Register = (on, options) => {
           ) : (
             <Text dimColor>{reference(shown, lang)}</Text>
           )}
+          {current ? <Text> </Text> : null}
+          {current ? (
+            <Select
+              key="ayah"
+              options={ayahOptions(current.numberOfAyahs, ayahHere)}
+              value={String(ayahHere)}
+              onSelect={value => pickAyah($, current.number, value)}
+            />
+          ) : null}
           {current ? <Text dimColor> {range(shown)}</Text> : null}
         </Box>
       </Box>

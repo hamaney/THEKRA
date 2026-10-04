@@ -32,13 +32,15 @@ ayat, starting at a random ayah, for the whole session:
   once and never re-wrapped, so a word keeps its place as the page moves.
 - While Claude works the page moves up one line at a time; the oldest line
   fades and the newest is bright.
-- Buttons below the page: `prev` and `next` move one line (they swap sides in
-  Arabic), the speed button cycles 10, 20 and 30 seconds per line, the
-  autoscroll button cycles scrolling while Claude works, always, or never, and
-  `English` / `العربية` switches between the Uthmani Arabic and the Saheeh
-  International translation. Click them, or focus the band with `ctrl+x tab`
-  and press `p`, `n`, `s`, `a` or `t`.
-- The source line names the surah and the ayat on the page.
+- Buttons below the page: `◀` and `▶` move one line (they swap sides in
+  Arabic). The other buttons show their current setting and move to the next
+  on a press: the speed (`10s`, `20s`, `30s` per line), when the page scrolls
+  by itself (`while thinking`, `continuous`, `manual`), and the language
+  (`ARA` for the Uthmani Arabic, `ENG` for the Saheeh International
+  translation). Click them, or focus the band with `ctrl+x tab` and press `p`,
+  `n`, `s`, `a` or `t`.
+- Under the buttons, a surah list and an ayah list jump the page anywhere, and
+  the ayat on the page are named beside them.
 - `/config` has an **Ayat alignment** setting: right (default), center or left.
 
 The page needs a recent Claude Code in the terminal or the desktop app; it is

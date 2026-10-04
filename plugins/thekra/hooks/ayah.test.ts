@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { alignment, append, firstAyahOf, nextAuto, parseSurahList, range, surahOptions, nextSpeed, parseSurah, parseVerse, reference, scrolls, surahNear, words } from './index'
+import { alignment, append, ayahOptions, firstAyahOf, nextAuto, parseSurahList, range, surahOptions, nextSpeed, parseSurah, parseVerse, reference, scrolls, surahNear, words } from './index'
 
 const verse = (text: string, numberInSurah: number) => ({
   number: numberInSurah,
@@ -177,4 +177,21 @@ test('numbers from the source must be whole numbers, and direction overrides are
     ayahs: [{ number: 1, text: 'أ', numberInSurah: 'x' }],
   }
   expect(parseSurah(JSON.stringify({ code: 200, data: surah }))).toEqual([])
+})
+
+test('the ayah picker shows a block of 60 ayat and jumps to the blocks around it, never over 64', () => {
+  const short = ayahOptions(7, 3)
+  expect(short.map(o => o.value)).toEqual(['1', '2', '3', '4', '5', '6', '7'])
+  const start = ayahOptions(286, 5)
+  expect(start.length).toBeLessThanOrEqual(64)
+  expect(start[0].value).toBe('1')
+  expect(start[59].value).toBe('60')
+  expect(start[60]).toEqual({ value: '61', label: '... 61-120' })
+  const middle = ayahOptions(286, 153)
+  expect(middle.length).toBeLessThanOrEqual(64)
+  expect(middle[0]).toEqual({ value: '61', label: '... 61-120' })
+  expect(middle[1].value).toBe('121')
+  expect(middle[middle.length - 1]).toEqual({ value: '181', label: '... 181-240' })
+  const end = ayahOptions(286, 286)
+  expect(end[end.length - 1].value).toBe('286')
 })
